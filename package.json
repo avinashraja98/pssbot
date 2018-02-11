@@ -5,5 +5,8 @@
   "main": "app.js",
   "author": {
     "name": "Avinash"
+  },
+  "scripts": {
+    "start": "node app.js"
   }
 }
