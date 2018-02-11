@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27130.2010
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "pssbot", "pssbot.njsproj", "{ED5ADBB3-8B74-46D3-9DB9-7B8D88203777}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{ED5ADBB3-8B74-46D3-9DB9-7B8D88203777}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ED5ADBB3-8B74-46D3-9DB9-7B8D88203777}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ED5ADBB3-8B74-46D3-9DB9-7B8D88203777}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ED5ADBB3-8B74-46D3-9DB9-7B8D88203777}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {BAE78BCE-5402-4510-9610-9C3574C64BA8}
+	EndGlobalSection
+EndGlobal

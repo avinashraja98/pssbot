@@ -1,0 +1,9 @@
+{
+  "name": "pssbot",
+  "version": "0.0.0",
+  "description": "pssbot",
+  "main": "app.js",
+  "author": {
+    "name": "Avinash"
+  }
+}
