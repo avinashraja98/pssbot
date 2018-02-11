@@ -4,6 +4,8 @@ const Discord = require('discord.js');
 const client = new Discord.Client();
 var isReady = true;
 
+console.log("Ready");
+
 client.login('NDEyMDMwNDI1ODcyMjAzNzg3.DWH-JA.9kNiLRB5vr2EiJl51aqw0cg-oP0');
 
 client.on('message', async message => {
