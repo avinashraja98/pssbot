@@ -28,6 +28,7 @@ client.on('message', async message => {
 
     if (isReady && message.content === '!pss') {
         isReady = false;
+        message.reply('BHAHAHAHA...');
         // Only try to join the sender's voice channel if they are in one themselves
         if (message.member.voiceChannel) {
             const connection = await message.member.voiceChannel.join().then(connection => {
