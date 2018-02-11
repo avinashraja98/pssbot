@@ -2,6 +2,7 @@
 
 const Discord = require('discord.js');
 const client = new Discord.Client();
+var isReady = true;
 
 client.login('NDEyMDMwNDI1ODcyMjAzNzg3.DWH-JA.9kNiLRB5vr2EiJl51aqw0cg-oP0');
 
@@ -10,13 +11,14 @@ client.on('message', async message => {
     // we ignore it
     if (!message.guild) return;
 
-    if (message.content === '!pss') {
+    if (isReady && message.content === '!pss') {
+        isReady = false;
         // Only try to join the sender's voice channel if they are in one themselves
         if (message.member.voiceChannel) {
             const connection = await message.member.voiceChannel.join().then(connection => {
                 const dispatcher = connection.playFile('./Audio/clip.mp3');
                 dispatcher.on("end", end => {
-                    voiceChannel.leave();
+                    message.member.voiceChannel.leave();
                 });
             }).catch(err => console.log(err));
             isReady = true;
