@@ -15,11 +15,13 @@ app.listen(port, function () {
 
 const Discord = require('discord.js');
 const client = new Discord.Client();
+const config = require('./config')
+
 var isReady = true;
 
 console.log("Ready");
 
-client.login('NDEyMDMwNDI1ODcyMjAzNzg3.DWH-JA.9kNiLRB5vr2EiJl51aqw0cg-oP0');
+client.login(config.token);
 
 client.on('message', async message => {
     // Voice only works in guilds, if the message does not come from a guild,
