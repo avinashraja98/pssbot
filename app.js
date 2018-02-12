@@ -28,9 +28,9 @@ client.on('message', async message => {
 
     if (isReady && message.content === '!pss') {
         isReady = false;
-        message.reply('BHAHAHAHA...');
         // Only try to join the sender's voice channel if they are in one themselves
         if (message.member.voiceChannel) {
+            message.reply('BHAHAHAHA...');
             const connection = await message.member.voiceChannel.join().then(connection => {
                 const dispatcher = connection.playFile('./Audio/clip.mp3');
                 dispatcher.on("end", end => {
@@ -40,6 +40,7 @@ client.on('message', async message => {
             isReady = true;
         } else {
             message.reply('You need to join a voice channel first!');
+            isReady = true;
         }
     }
 });
