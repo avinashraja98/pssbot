@@ -45,4 +45,20 @@ client.on('message', async message => {
             isReady = true;
         }
     }
+    if (isReady && message.content === '!mala') {
+        isReady = false;
+        // Only try to join the sender's voice channel if they are in one themselves
+        if (message.member.voiceChannel) {
+            const connection = await message.member.voiceChannel.join().then(connection => {
+                const dispatcher = connection.playFile('/home/don/pssbot/Audio/malacry.mp3');
+                dispatcher.on("end", end => {
+                    message.member.voiceChannel.leave();
+                });
+            }).catch(err => console.log(err));
+            isReady = true;
+        } else {
+            message.reply('You need to join a voice channel first!');
+            isReady = true;
+        }
+    }
 });
