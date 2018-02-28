@@ -5,11 +5,11 @@ var app = express();
 
 var port = process.env.PORT || 8080;
 
-app.get('/', function (req, res) {
+app.get('/', function(req, res) {
     res.send("pssBot");
 });
 
-app.listen(port, function () {
+app.listen(port, function() {
     console.log('app is running on port:' + port);
 });
 
@@ -19,42 +19,43 @@ const config = require('./config')
 
 var isReady = true;
 
+const commands = {
+    '!pss': 'pss.mp3',
+    '!mala': 'mala.mp3',
+    '!aamadmi': 'aamadmi.mp3',
+    '!devily': 'devily.mp3',
+    '!lady': 'lady.mp3',
+    '!ladybye': 'ladybye.mp3'
+};
+
 console.log("Ready");
 
 client.login(config.token);
+
+function playclip(channel, clip) {
+
+    const connection = channel.join().then(connection => {
+        const dispatcher = connection.playFile('./Audio/' + clip);
+        dispatcher.on("end", end => {
+            channel.leave();
+        });
+    }).catch(err => console.log(err));
+}
 
 client.on('message', async message => {
     // Voice only works in guilds, if the message does not come from a guild,
     // we ignore it
     if (!message.guild) return;
 
-    if (isReady && message.content === '!pss') {
+
+    if (isReady && commands.hasOwnProperty(message.content)) {
         isReady = false;
         // Only try to join the sender's voice channel if they are in one themselves
         if (message.member.voiceChannel) {
-            message.reply('BHAHAHAHA...');
-            const connection = await message.member.voiceChannel.join().then(connection => {
-                const dispatcher = connection.playFile('./Audio/clip.mp3');
-                dispatcher.on("end", end => {
-                    message.member.voiceChannel.leave();
-                });
-            }).catch(err => console.log(err));
-            isReady = true;
-        } else {
-            message.reply('You need to join a voice channel first!');
-            isReady = true;
-        }
-    }
-    if (isReady && message.content === '!mala') {
-        isReady = false;
-        // Only try to join the sender's voice channel if they are in one themselves
-        if (message.member.voiceChannel) {
-            const connection = await message.member.voiceChannel.join().then(connection => {
-                const dispatcher = connection.playFile('/home/don/pssbot/Audio/malacry.mp3');
-                dispatcher.on("end", end => {
-                    message.member.voiceChannel.leave();
-                });
-            }).catch(err => console.log(err));
+
+            playclip(message.member.voiceChannel, commands[message.content]);
+
+
             isReady = true;
         } else {
             message.reply('You need to join a voice channel first!');
