@@ -107,7 +107,6 @@ function setCommands() {
 }
 
 function playclip(channel, clip) {
-
     const connection = channel.join().then(connection => {
         const dispatcher = connection.playFile('./Audio/' + clip);
         dispatcher.on("end", end => {
