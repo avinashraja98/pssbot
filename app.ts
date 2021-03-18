@@ -1,14 +1,11 @@
 const Discord = require('discord.js');
+require('dotenv').config();
 
 const client = new Discord.Client();
-const config = require('./config');
-
 const express = require('express');
 
 const app = express();
-
 const formidable = require('formidable');
-
 const bodyParser = require('body-parser');
 
 app.use(bodyParser.json());
@@ -17,6 +14,7 @@ app.use(bodyParser.urlencoded({
 }));
 
 const port = process.env.PORT || 8080;
+const token = process.env.BOT_TOKEN || null;
 
 // var mongoose = require("mongoose");
 // mongoose.Promise = global.Promise;
@@ -70,7 +68,7 @@ app.post('/addcommand', (req, res) => {
       })
       .catch((err) => {
         console.log(err);
-        console.log(err.toJSON().code == 11000);
+        console.log(err.toJSON().code === 11000);
         if (err.toJSON().code == 11000) {
           res.status(400).send('Command exists!');
         } else {
@@ -91,34 +89,34 @@ app.listen(port, () => {
 
 console.log('Ready');
 
-client.login(config.token);
+client.login(token);
 
 client.on('ready', () => {
   setCommands();
   client.user.setActivity('!<command>');
 });
 
-function setCommands() {
+const setCommands = () => {
   command.find({}, (err, res) => {
     if (err) return handleError(err);
     commands = res;
   });
-}
+};
 
-function playclip(channel, clip) {
+const playclip = (channel, clip) => {
   const connection = channel.join().then((connection) => {
     const dispatcher = connection.playFile(`./Audio/${clip}`);
     dispatcher.on('end', (end) => {
       channel.leave();
     });
   }).catch((err) => console.log(err));
-}
+};
 
 client.on('message', async (message) => {
   // Voice only works in guilds, if the message does not come from a guild,
   // we ignore it
   if (!message.guild) return;
-  const clientCommand = commands.find((command) => command.Commandname == message.content);
+  const clientCommand = commands.find((command) => command.Commandname === message.content);
 
   if (isReady && clientCommand) {
     isReady = false;
