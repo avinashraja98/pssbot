@@ -1,12 +1,14 @@
-const Discord = require('discord.js');
+import Discord, { Message } from 'discord.js';
+import express, { Request, Response } from 'express';
+import multer, { FileFilterCallback, MulterError } from 'multer';
+
 require('dotenv').config();
 
 const client = new Discord.Client();
-const express = require('express');
 
 const app = express();
-const formidable = require('formidable');
 const bodyParser = require('body-parser');
+const fs = require('fs');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
@@ -14,120 +16,132 @@ app.use(bodyParser.urlencoded({
 }));
 
 const port = process.env.PORT || 8080;
-const token = process.env.BOT_TOKEN || null;
+const token = process.env.BOT_TOKEN || undefined;
+const clipsFolder = process.env.CLIPS_FOLDER || './audio';
+const prefix = process.env.PREFIX || '+';
 
-// var mongoose = require("mongoose");
-// mongoose.Promise = global.Promise;
-// mongoose.connect(config.mongodb).catch(err => {
-//     console.log(err);
-// });
-
-// var commandSchema = new mongoose.Schema({
-//     Commandname: {
-//         type: String,
-//         unique: true
-//     },
-//     Filename: String
-// });
-
-// var command = mongoose.model("command", commandSchema);
-
-let isReady = true;
+let isReady = false;
 const sizeLimitBytes = 1 * 1000 * 1000; // 1MB
-let commands = {};
+const allowedFiles = ['.mp3'];
+const regex = new RegExp(`([a-zA-Z0-9_.])+(${allowedFiles.join('|')})$`);
+const commands: String[] = [];
 
-app.get('/', (req, res) => {
-  res.sendFile(`${__dirname}/index.html`);
-});
+const storage = multer.diskStorage({
+  destination(req: Request, file: any, cb: Function) {
+    cb(null, `${__dirname}/${clipsFolder}`);
+  },
 
-app.post('/addcommand', (req, res) => {
-  const form = new formidable.IncomingForm();
-  form.parse(req);
-
-  form.on('fileBegin', (name, file) => {
-    file.path = `${__dirname}/Audio/${file.name}`;
-  });
-
-  form.on('progress', (bytesReceived, bytesExpected) => {
-    if (bytesReceived > sizeLimitBytes) {
-      form._error(new Error('File size is too big!'));
-      return false;
-    }
-  });
-
-  form.on('file', (name, file) => {
-    console.log(`Uploaded ${file.name}`);
-    const formData = {
-      Commandname: `!${file.name.slice(0, file.name.indexOf('.'))}`,
-      Filename: file.name,
-    };
-    const myData = new command(formData);
-    myData.save()
-      .then((item) => {
-        res.send('clip saved to database');
-      })
-      .catch((err) => {
-        console.log(err);
-        console.log(err.toJSON().code === 11000);
-        if (err.toJSON().code == 11000) {
-          res.status(400).send('Command exists!');
-        } else {
-          res.status(400).send('Unknown error!');
-        }
-      });
-    setCommands();
-  });
-
-  form.on('error', (err) => {
-    res.status(400).send(err.toString());
-  });
-});
-
-app.listen(port, () => {
-  console.log(`app is running on port:${port}`);
-});
-
-console.log('Ready');
-
-client.login(token);
-
-client.on('ready', () => {
-  setCommands();
-  client.user.setActivity('!<command>');
+  // By default, multer removes file extensions so let's add them back
+  filename(req: Request, file: any, cb: Function) {
+    cb(null, file.originalname);
+  },
 });
 
 const setCommands = () => {
-  command.find({}, (err, res) => {
-    if (err) return handleError(err);
-    commands = res;
+  fs.readdir(clipsFolder, (err: Error, files: String[]) => {
+    files.forEach((file: String) => {
+      commands.push(file.slice(0, file.indexOf('.')));
+    });
+    console.log(commands);
+    isReady = true;
+    console.log('Ready!');
   });
 };
 
-const playclip = (channel, clip) => {
-  const connection = channel.join().then((connection) => {
-    const dispatcher = connection.playFile(`./Audio/${clip}`);
-    dispatcher.on('end', (end) => {
-      channel.leave();
-    });
-  }).catch((err) => console.log(err));
+const audioFileFilter = (req: any, file: any, cb: FileFilterCallback): void => {
+  if (!regex.test(file.originalname)) {
+    console.log(file);
+    cb(new Error('File not mp3 or name has unsupported characters'));
+    return;
+  }
+  if (file.originalname.length >= 25) {
+    console.log(file);
+    cb(new Error('Command name too long, please rename to under 25 characters'));
+    return;
+  }
+  const commandName = file.originalname.slice(0, file.originalname.indexOf('.'));
+  if (commands.includes(commandName)) {
+    cb(new Error('Command exists!'));
+    return;
+  }
+  cb(null, true);
 };
 
-client.on('message', async (message) => {
+app.get('/', (req: Request, res: Response): void => {
+  res.send('PSSbot API Online!');
+});
+
+app.listen(port, () => {
+  setCommands();
+  console.log(`app is running on port:${port}`);
+});
+
+const upload = multer({
+  storage,
+  fileFilter: audioFileFilter,
+  limits: {
+    fileSize: sizeLimitBytes,
+  },
+}).single('file');
+
+app.post('/addcommand', (req: Request, res: Response) => {
+  upload(req, res, (err: any): void => {
+    if (err instanceof MulterError) {
+      res.status(400).send(err.message);
+      return;
+    }
+    if (err) {
+      res.status(400).send(err.toString());
+      return;
+    }
+    if (!req.file) {
+      res.status(400).send('Please select an audio clip to upload');
+      return;
+    }
+    const commandName = req.file.originalname.slice(0, req.file.originalname.indexOf('.'));
+    commands.push(commandName);
+    res.send(`Uploaded ${req.file.originalname}`);
+  });
+});
+
+// Discord Bot
+client.login(token);
+
+client.on('ready', () => {
+  if (client.user) { client.user.setActivity(`${prefix}help`); }
+});
+
+// const playclip = (channel, clip) => {
+//   const connection = channel.join().then((connection) => {
+//     const dispatcher = connection.playFile(`./Audio/${clip}`);
+//     dispatcher.on('end', (end) => {
+//       channel.leave();
+//     });
+//   }).catch((err) => console.log(err));
+// };
+
+client.on('message', async (message: Message) => {
   // Voice only works in guilds, if the message does not come from a guild,
   // we ignore it
   if (!message.guild) return;
-  const clientCommand = commands.find((command) => command.Commandname === message.content);
 
-  if (isReady && clientCommand) {
-    isReady = false;
-    // Only try to join the sender's voice channel if they are in one themselves
-    if (message.member.voiceChannel) {
-      playclip(message.member.voiceChannel, clientCommand.Filename);
-
-      isReady = true;
-    } else {
-      message.reply('You need to join a voice channel first!');
-      isReady = true;
-    }
+  if (message.content === (`${prefix}help`)) {
+    message.reply(`Join a voice channel and try any of these commands: \n\n ${commands.map((command) => `${prefix + command}\n`).join('')}`);
+  } else if (message.content.substr(0, 1) === prefix) {
+    message.reply('Nigga bot is still in development');
   }
+
+  // const clientCommand = commands.find((command) => command === message.content.substring(1));
+  // if (isReady && clientCommand) {
+  //   isReady = false;
+  //   // Only try to join the sender's voice channel if they are in one themselves
+  //   if (message.member.voiceChannel) {
+  //     playclip(message.member.voiceChannel, clientCommand.Filename);
+
+  //     isReady = true;
+  //   } else {
+  //     message.reply('You need to join a voice channel first!');
+  //     isReady = true;
+  //   }
+  // }
 });
