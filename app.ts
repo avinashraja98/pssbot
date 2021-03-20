@@ -1,6 +1,8 @@
 import Discord, { Message } from 'discord.js';
 import express, { Request, Response } from 'express';
 import multer, { FileFilterCallback, MulterError } from 'multer';
+import low from 'lowdb';
+import FileSync from 'lowdb/adapters/FileSync';
 
 require('dotenv').config();
 
@@ -8,7 +10,18 @@ const client = new Discord.Client();
 
 const app = express();
 const bodyParser = require('body-parser');
-const fs = require('fs');
+
+interface ClipData {
+  commandName: String,
+  fileName: String,
+}
+
+interface Schema {
+  clipData: ClipData[],
+}
+
+const adapter = new FileSync<Schema>('pssbotdb.json');
+const db = low(adapter);
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
@@ -20,11 +33,12 @@ const token = process.env.BOT_TOKEN || undefined;
 const clipsFolder = process.env.CLIPS_FOLDER || './audio';
 const prefix = process.env.PREFIX || '+';
 
-let isReady = false;
+const isReady = false;
 const sizeLimitBytes = 1 * 1000 * 1000; // 1MB
-const allowedFiles = ['.mp3'];
-const regex = new RegExp(`([a-zA-Z0-9_.])+(${allowedFiles.join('|')})$`);
-const commands: String[] = [];
+const regex = new RegExp('([a-zA-Z0-9_])$');
+
+db.defaults({ clipData: [] })
+  .write();
 
 const storage = multer.diskStorage({
   destination(req: Request, file: any, cb: Function) {
@@ -37,30 +51,24 @@ const storage = multer.diskStorage({
   },
 });
 
-const setCommands = () => {
-  fs.readdir(clipsFolder, (err: Error, files: String[]) => {
-    files.forEach((file: String) => {
-      commands.push(file.slice(0, file.indexOf('.')));
-    });
-    console.log(commands);
-    isReady = true;
-    console.log('Ready!');
-  });
-};
-
-const audioFileFilter = (req: any, file: any, cb: FileFilterCallback): void => {
-  if (!regex.test(file.originalname)) {
-    console.log(file);
-    cb(new Error('File not mp3 or name has unsupported characters'));
+const audioFileFilter = (req: Request, file: any, cb: FileFilterCallback): void => {
+  if (file.mimetype !== 'audio/mpeg') {
+    cb(new Error('File not mp3'));
     return;
   }
-  if (file.originalname.length >= 25) {
-    console.log(file);
+  if (!req.body.commandName) {
+    cb(new Error('Command name should be specifiecd first in the request'));
+    return;
+  }
+  if (!regex.test(req.body.commandName)) {
+    cb(new Error('Command name has unsupported characters'));
+    return;
+  }
+  if (req.body.commandName.length >= 25) {
     cb(new Error('Command name too long, please rename to under 25 characters'));
     return;
   }
-  const commandName = file.originalname.slice(0, file.originalname.indexOf('.'));
-  if (commands.includes(commandName)) {
+  if (db.get('clipData').find((clipData) => clipData.commandName === req.body.commandName).value()) {
     cb(new Error('Command exists!'));
     return;
   }
@@ -72,7 +80,6 @@ app.get('/', (req: Request, res: Response): void => {
 });
 
 app.listen(port, () => {
-  setCommands();
   console.log(`app is running on port:${port}`);
 });
 
@@ -98,8 +105,16 @@ app.post('/addcommand', (req: Request, res: Response) => {
       res.status(400).send('Please select an audio clip to upload');
       return;
     }
-    const commandName = req.file.originalname.slice(0, req.file.originalname.indexOf('.'));
-    commands.push(commandName);
+
+    const clipData: ClipData = {
+      commandName: req.body.commandName,
+      fileName: req.file.originalname,
+    };
+
+    db.get('clipData')
+      .push(clipData)
+      .write();
+
     res.send(`Uploaded ${req.file.originalname}`);
   });
 });
@@ -125,10 +140,12 @@ client.on('message', async (message: Message) => {
   // we ignore it
   if (!message.guild) return;
 
+  if (message.content.substr(0, 1) !== prefix) return;
+
   if (message.content === (`${prefix}help`)) {
-    message.reply(`Join a voice channel and try any of these commands: \n\n ${commands.map((command) => `${prefix + command}\n`).join('')}`);
-  } else if (message.content.substr(0, 1) === prefix) {
-    message.reply('Nigga bot is still in development');
+    message.reply(`Join a voice channel and try any of these commands: \n\n ${db.get('clipData').value().map((clipData) => `${prefix + clipData.commandName}\n`).join('')}`);
+  } else if (db.get('clipData').find((clipData) => clipData.commandName === message.content.substring(1)).value()) {
+    message.reply('Bot is still in development');
   }
 
   // const clientCommand = commands.find((command) => command === message.content.substring(1));
