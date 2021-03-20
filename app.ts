@@ -1,4 +1,4 @@
-import Discord, { Message } from 'discord.js';
+import Discord, { Message, VoiceChannel } from 'discord.js';
 import express, { Request, Response } from 'express';
 import multer, { FileFilterCallback, MulterError } from 'multer';
 import low from 'lowdb';
@@ -33,7 +33,7 @@ const token = process.env.BOT_TOKEN || undefined;
 const clipsFolder = process.env.CLIPS_FOLDER || './audio';
 const prefix = process.env.PREFIX || '+';
 
-const isReady = false;
+let isReady = false;
 const sizeLimitBytes = 1 * 1000 * 1000; // 1MB
 const regex = new RegExp('([a-zA-Z0-9_])$');
 
@@ -124,41 +124,38 @@ client.login(token);
 
 client.on('ready', () => {
   if (client.user) { client.user.setActivity(`${prefix}help`); }
+  isReady = true;
 });
 
-// const playclip = (channel, clip) => {
-//   const connection = channel.join().then((connection) => {
-//     const dispatcher = connection.playFile(`./Audio/${clip}`);
-//     dispatcher.on('end', (end) => {
-//       channel.leave();
-//     });
-//   }).catch((err) => console.log(err));
-// };
+const playclip = (channel: VoiceChannel, clip: ClipData) => {
+  channel.join().then((connection) => {
+    console.log('in');
+    const dispatcher = connection.play(`${clipsFolder}${'/'}${clip.fileName}`);
+    dispatcher.on('finish', () => {
+      channel.leave();
+      isReady = true;
+    });
+  }).catch((err) => console.log(err));
+};
 
 client.on('message', async (message: Message) => {
-  // Voice only works in guilds, if the message does not come from a guild,
-  // we ignore it
   if (!message.guild) return;
 
   if (message.content.substr(0, 1) !== prefix) return;
 
   if (message.content === (`${prefix}help`)) {
     message.reply(`Join a voice channel and try any of these commands: \n\n ${db.get('clipData').value().map((clipData) => `${prefix + clipData.commandName}\n`).join('')}`);
-  } else if (db.get('clipData').find((clipData) => clipData.commandName === message.content.substring(1)).value()) {
-    message.reply('Bot is still in development');
+    return;
   }
 
-  // const clientCommand = commands.find((command) => command === message.content.substring(1));
-  // if (isReady && clientCommand) {
-  //   isReady = false;
-  //   // Only try to join the sender's voice channel if they are in one themselves
-  //   if (message.member.voiceChannel) {
-  //     playclip(message.member.voiceChannel, clientCommand.Filename);
-
-  //     isReady = true;
-  //   } else {
-  //     message.reply('You need to join a voice channel first!');
-  //     isReady = true;
-  //   }
-  // }
+  const clip = db.get('clipData').find((clipData) => clipData.commandName === message.content.substring(1)).value();
+  if (isReady) {
+    isReady = false;
+    if (message?.member?.voice.channel) {
+      playclip(message?.member?.voice.channel, clip);
+    } else {
+      message.reply('You need to join a voice channel first!');
+      isReady = true;
+    }
+  }
 });
