@@ -129,10 +129,8 @@ client.on('ready', () => {
 
 const playclip = (channel: VoiceChannel, clip: ClipData) => {
   channel.join().then((connection) => {
-    console.log('in');
     const dispatcher = connection.play(`${clipsFolder}${'/'}${clip.fileName}`);
     dispatcher.on('finish', () => {
-      channel.leave();
       isReady = true;
     });
   }).catch((err) => console.log(err));
@@ -143,12 +141,23 @@ client.on('message', async (message: Message) => {
 
   if (message.content.substr(0, 1) !== prefix) return;
 
-  if (message.content === (`${prefix}help`)) {
-    message.reply(`Join a voice channel and try any of these commands: \n\n ${db.get('clipData').value().map((clipData) => `${prefix + clipData.commandName}\n`).join('')}`);
+  const command = message.content.substring(1);
+
+  if (command === 'help') {
+    message.reply(`Join a voice channel and try any of these commands: \n\n ${prefix}leave \n\n${db.get('clipData').value().map((clipData) => `${prefix + clipData.commandName}\n`).join('')}`);
+    return;
+  }
+  if (command === 'leave') {
+    if (message.member?.voice.channel) {
+      message.reply('Bye!');
+      message.member?.voice.channel.leave();
+      return;
+    }
+    message.reply('You need to join a voice channel first!');
     return;
   }
 
-  const clip = db.get('clipData').find((clipData) => clipData.commandName === message.content.substring(1)).value();
+  const clip = db.get('clipData').find((clipData) => clipData.commandName === command).value();
   if (isReady) {
     isReady = false;
     if (message?.member?.voice.channel) {
