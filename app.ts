@@ -76,11 +76,11 @@ const audioFileFilter = (req: Request, file: any, cb: FileFilterCallback): void 
 };
 
 app.get('/', (req: Request, res: Response): void => {
-  res.send('PSSbot API Online!');
+  res.json({ message: 'PSSbot API Online!' });
 });
 
-app.listen(port, () => {
-  console.log(`app is running on port:${port}`);
+app.get('/commands', (req: Request, res: Response): void => {
+  res.json(db.get('clipData').value());
 });
 
 const upload = multer({
@@ -94,15 +94,15 @@ const upload = multer({
 app.post('/addcommand', (req: Request, res: Response) => {
   upload(req, res, (err: any): void => {
     if (err instanceof MulterError) {
-      res.status(400).send(err.message);
+      res.status(400).json({ error: err.message });
       return;
     }
     if (err) {
-      res.status(400).send(err.toString());
+      res.status(400).json({ error: err.toString() });
       return;
     }
     if (!req.file) {
-      res.status(400).send('Please select an audio clip to upload');
+      res.status(400).json({ error: 'Please select an audio clip to upload' });
       return;
     }
 
@@ -115,8 +115,12 @@ app.post('/addcommand', (req: Request, res: Response) => {
       .push(clipData)
       .write();
 
-    res.send(`Uploaded ${req.file.originalname}`);
+    res.json({ message: `Uploaded ${req.file.originalname}` });
   });
+});
+
+app.listen(port, () => {
+  console.log(`app is running on port:${port}`);
 });
 
 // Discord Bot
