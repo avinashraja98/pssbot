@@ -162,6 +162,10 @@ client.on('message', async (message: Message) => {
   }
 
   const clip = db.get('clipData').find((clipData) => clipData.commandName === command).value();
+  if (clip) {
+    message.reply('Command does not exist!');
+    return;
+  }
   if (isReady) {
     isReady = false;
     if (message?.member?.voice.channel) {
